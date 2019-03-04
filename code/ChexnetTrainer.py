@@ -20,7 +20,7 @@ from DensenetModels import DenseNet121
 from DensenetModels import DenseNet169
 from DensenetModels import DenseNet201
 from ResnetModels import *
-from NasnetModel import *
+#from NasnetModel import *
 from DatasetGenerator import DatasetGenerator
 
 
@@ -68,14 +68,16 @@ class ChexnetTrainer ():
 
         #-------------------- SETTINGS: DATASET BUILDERS
         datasetTrain = DatasetGenerator(pathImageDirectory=pathDirData, pathDatasetFile=pathFileTrain, transform=transformSequence)
-        datasetVal =   DatasetGenerator(pathImageDirectory=pathDirData, pathDatasetFile=pathFileVal, transform=transformSequence)
+        datasetVal = DatasetGenerator(pathImageDirectory=pathDirData, pathDatasetFile=pathFileVal, transform=transformSequence)
               
         dataLoaderTrain = DataLoader(dataset=datasetTrain, batch_size=trBatchSize, shuffle=True,  num_workers=24, pin_memory=True)
         dataLoaderVal = DataLoader(dataset=datasetVal, batch_size=trBatchSize, shuffle=False, num_workers=24, pin_memory=True)
         
         #---------------------SETTINGS: OPTIMIZER & SCHEDULER
         optimizer = optim.Adam (model.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=1e-5)
+        #optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=1e-4, momentum = 0.9)
         scheduler = ReduceLROnPlateau(optimizer, factor = 0.1, patience = 5, mode = 'min')
+        
                 
         #-------------------- SETTINGS: LOSS
         loss = torch.nn.BCELoss(size_average = True)
@@ -84,13 +86,16 @@ class ChexnetTrainer ():
         if checkpoint != None:
             modelCheckpoint = torch.load(checkpoint)
             model.load_state_dict(modelCheckpoint['state_dict'])
-            optimizer.load_state_dict(modelCheckpoint['optimizer'])
+            #optimizer.load_state_dict(modelCheckpoint['optimizer'])
 
         
         #---- TRAIN THE NETWORK
-        
+        lr = 0.01
         lossMIN = 100000
-        
+        lr_decay = 0.1
+        lr_decay_epoch = 20
+        lambda_lr = lambda epoch: lr_decay ** ((epoch + 1) // lr_decay_epoch)
+
         for epochID in range (0, trMaxEpoch):
             
             timestampTime = time.strftime("%H%M%S")
@@ -103,23 +108,35 @@ class ChexnetTrainer ():
             timestampTime = time.strftime("%H%M%S")
             timestampDate = time.strftime("%d%m%Y")
             timestampEND = timestampDate + '-' + timestampTime
-            
-            scheduler.step(losstensor.data[0])
-            
+            #self.LR_Policy(optimizer, lr, lambda_lr(epochID + 1))
+            scheduler.step(losstensor.data[0])          
+
             if lossVal < lossMIN:
-                lossMIN = lossVal    
-                torch.save({'epoch': epochID + 1, 'state_dict': model.state_dict(), 'best_loss': lossMIN, 'optimizer' : optimizer.state_dict()}, 'm-' + launchTimestamp + '.pth.tar')
+                lossMIN = lossVal   
+                print(lossMIN)
+                torch.save({'epoch': epochID + 1, 'state_dict': model.state_dict(), 'best_loss': lossMIN, 'optimizer' : optimizer.state_dict()}, str(nnArchitecture) +'-m-' + launchTimestamp + '.pth.tar')
                 print ('Epoch [' + str(epochID + 1) + '] [save] [' + timestampEND + '] loss= ' + str(lossVal))
             else:
                 print ('Epoch [' + str(epochID + 1) + '] [----] [' + timestampEND + '] loss= ' + str(lossVal))
             if epochID == trMaxEpoch-1:
                 torch.save({'epoch': epochID + 1, 'state_dict': model.state_dict(), 'best_loss': lossMIN, 'optimizer' : optimizer.state_dict()}, 'm-final-checkpoint'  + '.pth.tar')
-                     
+            
+    #---------------------------------------------------------------------------------- 
+    #learning rate adjustment function
+    def LR_Policy(self, optimizer, init_lr, policy):
+    
+        for param_group in optimizer.param_groups:
+            
+            param_group['lr'] = init_lr * policy
+
+    
+
     #-------------------------------------------------------------------------------- 
        
     def epochTrain (self, model, dataLoader, optimizer, scheduler, epochMax, classCount, loss):
         
         model.train()
+        
         
         for batchID, (input, target) in enumerate (dataLoader):
                         
@@ -128,12 +145,15 @@ class ChexnetTrainer ():
             varInput = torch.autograd.Variable(input)
             varTarget = torch.autograd.Variable(target)         
             varOutput = model(varInput)
-            
+   
             lossvalue = loss(varOutput, varTarget)
+            
                        
             optimizer.zero_grad()
             lossvalue.backward()
             optimizer.step()
+            
+
             
     #-------------------------------------------------------------------------------- 
         
@@ -205,7 +225,7 @@ class ChexnetTrainer ():
         
         
         CLASS_NAMES = [ 'Atelectasis', 'Cardiomegaly', 'Effusion', 'Infiltration', 'Mass', 'Nodule', 'Pneumonia',
-                'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia']
+                'Pneumothorax', 'Consolidation', 'Edema', 'Emphysema', 'Fibrosis', 'Pleural_Thickening', 'Hernia', 'None']
         
         cudnn.benchmark = True
         
@@ -218,6 +238,7 @@ class ChexnetTrainer ():
         elif nnArchitecture == 'nasnetalarge': model = Nasnet(nnClassCount, nnIsTrained).cuda()
 
         model = torch.nn.DataParallel(model).cuda() 
+        print(pathModel)
         
         modelCheckpoint = torch.load(pathModel)
         model.load_state_dict(modelCheckpoint['state_dict'])

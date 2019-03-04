@@ -10,7 +10,7 @@ from ChexnetTrainer import ChexnetTrainer
 def main ():
     
     runTest()
-   # runTrain()
+    #runTrain()
   
 #--------------------------------------------------------------------------------   
 
@@ -25,25 +25,24 @@ def runTrain():
     timestampLaunch = timestampDate + '-' + timestampTime
     
     #---- Path to the directory with images
-    pathDirData = '/home/dataset/ChextXRay'
+    pathDirData = '../dataset/ChextXRay'
     
     #---- Paths to the files with training, validation and testing sets.
     #---- Each file should contains pairs [path to image, output vector]
     #---- Example: images_011/00027736_001.png 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-    #pathFileTrain = './dataset/train_1.txt'
-    #pathFileVal = './dataset/val_1.txt'
-    #pathFileTest = './dataset/test_1.txt'
     
-    pathFileTrain = '/home/group8/filelist/train_label.txt'
-    pathFileVal = '/home/group8/filelist/val_label.txt'
-    pathFileTest = '/home/group8/filelist/test_label.txt'
+    pathFileTrain = './dataset/train_val_label.txt'
+    pathFileVal = './dataset/val_label.txt'
+    pathFileTest = './dataset/test_label.txt'
     #---- Neural network parameters: type of the network, is it pre-trained 
     #---- on imagenet, number of classes
-    #nnArchitecture = DENSENET121
-    nnArchitecture = 'nasnetalarge'
+    nnArchitecture = 'ResNet-18'
+    #nnArchitecture = 'nasnetalarge'
     nnIsTrained = True
     nnClassCount = 14
-    checkpoint = 'm-05042018-120007-pth.tar' 
+    checkpoint =  'ResNet-18-m-21052018-160110.pth.tar'
+    #checkpoint = 'm-17052018-143018.pth.tar'
+    #checkpoint = './m-17052018-144133.pth.tar'
     #---- Training settings: batch size, maximum number of epochs
 
     trBatchSize = 32
@@ -51,9 +50,9 @@ def runTrain():
     
     #---- Parameters related to image transforms: size of the down-scaled image, cropped image
     imgtransResize = 256
-    imgtransCrop = 299
-        
-    pathModel = 'm-' + timestampLaunch + '.pth.tar'
+    imgtransCrop = 224
+    
+    #pathModel = 'm-' + timestampLaunch + '.pth.tar'
     
     print ('Training NN architecture = ', nnArchitecture)
     Trainer = ChexnetTrainer()
@@ -67,24 +66,18 @@ def runTrain():
 
 def runTest():
     
-    pathDirData = '/home/dataset/ChextXRay'
-    pathFileTest = '/home/group8/filelist/test_label.txt'
-    #pathFileTest = './dataset/test_label.txt'
+    pathDirData = '../dataset/ChextXRay'
+    pathFileTest = './dataset/test_label.txt'
     #nnArchitecture = 'DENSE-NET-121'
-    #nnArchitecture = 'ResNet-18'
-    nnArchitecture = 'nasnetalarge'
+    nnArchitecture = 'ResNet-18'
     nnIsTrained = True
     nnClassCount = 14
-    trBatchSize = 16
-    imgtransResize = 299 
-    imgtransCrop = 299
+    trBatchSize = 32
+    imgtransResize = 256
+    imgtransCrop = 224
     
-   # pathModel = './models/m-25012018-123527.pth.tar'
-   # pathModel = './m-26032018-223714.pth.tar'
-   # pathModel = './m-27032018-143408.pth.tar'
-   # pathModel = './m-final-checkpoint.pth.tar'
-    pathModel = './m-05042018-103226.pth.tar'
-    
+    #pathModel = 'ResNet-50-m-17052018-184342.pth.tar'
+    pathModel = 'ResNet-18-m-21052018-224624.pth.tar'
     timestampLaunch = ''
     Trainer = ChexnetTrainer()
     Trainer.test(pathDirData, pathFileTest, pathModel, nnArchitecture, nnClassCount, nnIsTrained, trBatchSize, imgtransResize, imgtransCrop, timestampLaunch)

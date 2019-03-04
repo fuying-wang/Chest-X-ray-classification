@@ -42,3 +42,4 @@ class ResNet50(nn.Module):
 
     def forward(self, x):
         x = self.resnet50(x)
+        return x
